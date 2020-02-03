@@ -1,20 +1,30 @@
 package edu.mum.cs544.service;
 
-import edu.mum.cs544.domain.Authority;
-import edu.mum.cs544.domain.AuthorityType;
+import com.netflix.discovery.EurekaClient;
 import edu.mum.cs544.domain.CustomUserDetails;
 import edu.mum.cs544.domain.User;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.web.client.RestTemplate;
 
-public class CustomUserDetailsService implements org.springframework.security.core.userdetails.UserDetailsService{
+public class CustomUserDetailsService implements UserDetailsService {
+
+    private RestTemplate restTemplate;
+    private EurekaClient eurekaClient;
+
+    public CustomUserDetailsService(RestTemplate restTemplate, EurekaClient eurekaClient) {
+        this.restTemplate = restTemplate;
+        this.eurekaClient = eurekaClient;
+    }
+
     @Override
-    public UserDetails loadUserByUsername(String s) throws UsernameNotFoundException {
-        final User user = new User();
-        user.setUsername("admin");
-        user.setPassword("$2a$10$/DrzEJD403PbxZ.99R0Ru.K125d9DzXQtEPw4U1rNU7SqIR0HGBxi");
-        user.addRole( new Authority(AuthorityType.ROLE_ADMIN));
-        user.addRole( new Authority(AuthorityType.ROLE_USER));
+    public UserDetails loadUserByUsername(String userName) throws UsernameNotFoundException {
+        User user = restTemplate.getForObject(getUrl() + "users/" + userName, User.class);
         return new CustomUserDetails(user);
+    }
+
+    public String getUrl() {
+        return this.eurekaClient.getNextServerFromEureka("auth-fire-service", false).getHomePageUrl();
     }
 }
